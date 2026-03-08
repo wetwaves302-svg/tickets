@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣第一條鐵路：清領鐵路測驗</title>
+    <style>
+        :root {
+            --primary: #2c3e50; --accent: #3498db; --success: #27ae60; --error: #e74c3c; --bg: #ffffff;
+        }
+        body { font-family: -apple-system, "Noto Sans TC", "Microsoft JhengHei", sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 15px; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        header { text-align: center; border-bottom: 2px solid #f0f0f0; margin-bottom: 20px; position: sticky; top: 0; background: white; z-index: 100; padding: 10px 0; }
+        
+        #timer { font-size: 1.2rem; font-weight: bold; color: var(--error); margin-top: 5px; }
+        .info-box { background: #f1f3f5; border-radius: 10px; padding: 15px; margin-bottom: 20px; display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+        .full { grid-column: span 2; }
+        label { font-size: 0.8rem; font-weight: bold; color: #666; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
+
+        .q-card { border: 1px solid #eee; border-radius: 12px; padding: 20px; margin-bottom: 15px; transition: 0.3s; }
+        .tag { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 0.75rem; color: white; background-color: var(--primary); font-weight: bold; margin-bottom: 12px; }
+
+        .options { display: grid; gap: 10px; margin-top: 15px; }
+        .opt-btn { background: #fff; border: 2px solid #f0f0f0; padding: 14px; border-radius: 8px; text-align: left; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+        .opt-btn.selected { border-color: var(--accent); background-color: #ebf5fb; font-weight: bold; color: var(--accent); }
+
+        #submit-btn { width: 100%; background: var(--primary); color: white; padding: 18px; border: none; border-radius: 10px; font-size: 1.2rem; cursor: pointer; font-weight: bold; }
+        
+        #result-area { display: none; }
+        .score-num { font-size: 5rem; color: var(--success); text-align: center; font-weight: bold; margin: 10px 0; }
+        .review-item { padding: 15px; border-radius: 8px; margin-bottom: 12px; border-left: 6px solid #eee; background: #fff; border: 1px solid #eee; border-left-width: 6px; }
+        .correct { border-left-color: var(--success); background: #f0fff4; }
+        .wrong { border-left-color: var(--error); background: #fff5f5; }
+        #hidden_iframe { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="quiz-container">
+    <header>
+        <h1 style="font-size: 1.4rem; margin:0;">清領時期鐵路建設測驗</h1>
+        <div id="timer">作答時間：00:00</div>
+    </header>
+
+    <div class="info-box">
+        <div><label>班級</label><input type="text" id="stu-class" placeholder="如 801"></div>
+        <div><label>座號</label><input type="number" id="stu-no" placeholder="座號"></div>
+        <div class="full"><label>姓名</label><input type="text" id="stu-name" placeholder="請輸入姓名"></div>
+    </div>
+
+    <div id="questions-list"></div>
+    <button id="submit-btn" onclick="processResults()">完成交卷並查看診斷</button>
+</div>
+
+<div class="container" id="result-area">
+    <div style="text-align:center">
+        <h2 style="margin:0;">測驗結束！</h2>
+        <div id="time-spent" style="color:#666; margin-top:10px;"></div>
+        <div class="score-num" id="final-score">0</div>
+        <hr>
+        <h3 style="text-align:left">作答診斷報告：</h3>
+    </div>
+    <div id="review-list"></div>
+    <button onclick="location.reload()" style="width:100%; padding:15px; margin-top:20px; border-radius:10px; cursor:pointer; background:#eee; border:none; font-weight:bold;">重新挑戰（隨機抽題）</button>
+</div>
+
+<iframe name="hidden_iframe" id="hidden_iframe"></iframe>
+
+<script>
+const questionBank = [
+    { q: "積極推動台灣第一條鐵路建設的首任台灣巡撫是誰？", a: "劉銘傳", b: "丁日昌", c: "A" },
+    { q: "清領時期建設台灣第一條鐵路，其主要目的包含經濟發展以及下列何者？", a: "促進觀光休閒", b: "戰爭時期的軍事補助", c: "B" },
+    { q: "在劉銘傳之前，哪位福建巡撫曾向清廷提出在台鋪設鐵路的計畫卻被打回票？", a: "丁日昌", b: "蔣經國", c: "A" },
+    { q: "由於大清帝國缺乏建造技術，劉銘傳主要從哪兩個國家聘請工程師擔任顧問？", a: "英國與德國", b: "美國與法國", c: "A" },
+    { q: "台灣第一條鐵路，最先動工的是哪一個路段？", a: "台北至新竹段", b: "基隆至台北段", c: "B" },
+    { q: "台灣鐵路最早通車（光緒14年）的路段是下列何者？", a: "台北至錫口", b: "基隆至八堵", c: "A" },
+    { q: "清代時，民眾搭乘火車的車站與買票的地方分別被稱為什麼？", a: "碼頭與票房", b: "艙庫與買辦", c: "A" },
+    { q: "「第一代台北車站」的大致位置，大約位於今日的哪裡？", a: "現今的台北車站原址", b: "台北市立聯合醫院中興院區北側", c: "B" },
+    { q: "全台灣第一座鐵路隧道是哪一座？", a: "獅球嶺隧道", b: "草嶺隧道", c: "A" },
+    { q: "獅球嶺隧道開挖難度極高，歷時多久才完工？", a: "半年", b: "兩年半", c: "B" },
+    { q: "最早向德國購買並行駛於軌道上的蒸汽火車，其中一部命名為何？", a: "騰雲一號", b: "掣電六號", c: "A" },
+    { q: "清代鐵路火車行駛的時速大約是多少？", a: "約 20 公里", b: "約 60 公里", c: "A" },
+    { q: "當時從新竹搭車到基隆，理論上大約需要花費多少時間？", a: "兩個小時", b: "六個小時", c: "B" },
+    { q: "為什麼當時火車的時刻非常不固定且效率低落？", a: "燃料經常供應不足", b: "軌道鋪設狀況不佳且容易出軌", c: "B" },
+    { q: "清代火車的乘車環境狀況如何？", a: "寬敞舒適且準時", b: "龍蛇混雜，還有人攜帶雞鴨上車", c: "B" },
+    { q: "原本清代劉銘傳所建的鐵路，被日人廢物利用留下來的路段大約剩多少？", a: "不到一公里", b: "約一半的路線", c: "A" },
+    { q: "下列何者是今日仍可找到的劉銘傳鐵路重要遺跡？", a: "獅球嶺隧道", b: "淡水河木橋", c: "A" }
+];
+
+// 隨機抽選 10 題
+let selected = questionBank.sort(() => 0.5 - Math.random()).slice(0, 10);
+
+// 計時器
+let seconds = 0;
+const interval = setInterval(() => {
+    seconds++;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    document.getElementById('timer').innerText = `作答時間：${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}, 1000);
+
+// 渲染題目
+let userAnswers = {};
+const listEl = document.getElementById('questions-list');
+selected.forEach((item, i) => {
+    const card = document.createElement('div');
+    card.className = 'q-card';
+    card.innerHTML = `
+        <span class="tag">鐵路史專題</span>
+        <div style="font-weight:bold">${i+1}. ${item.q}</div>
+        <div class="options">
+            <button class="opt-btn" onclick="pick(${i}, 'A', this)">(A) ${item.a}</button>
+            <button class="opt-btn" onclick="pick(${i}, 'B', this)">(B) ${item.b}</button>
+        </div>
+    `;
+    listEl.appendChild(card);
+});
+
+function pick(i, val, btn) {
+    userAnswers[i] = val;
+    Array.from(btn.parentElement.children).forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+}
+
+function processResults() {
+    const cls = document.getElementById('stu-class').value;
+    const no = document.getElementById('stu-no').value;
+    const name = document.getElementById('stu-name').value;
+
+    if(!cls || !no || !name) { alert("請填寫班級、座號與姓名！"); return; }
+    if(Object.keys(userAnswers).length < 10) { alert("還有題目沒完成喔！"); return; }
+
+    clearInterval(interval);
+    let score = 0;
+    const reviewList = document.getElementById('review-list');
+    reviewList.innerHTML = "";
+
+    selected.forEach((item, i) => {
+        const isCorrect = userAnswers[i] === item.c;
+        if(isCorrect) score += 10;
+        const correctText = item.c === 'A' ? item.a : item.b;
+        const userText = userAnswers[i] === 'A' ? item.a : item.b;
+
+        const div = document.createElement('div');
+        div.className = `review-item ${isCorrect ? 'correct' : 'wrong'}`;
+        div.innerHTML = `
+            <div style="font-weight:bold">第 ${i+1} 題：${isCorrect ? '正確 (✓)' : '錯誤 (✗)'}</div>
+            <div style="font-size:0.95rem; margin:5px 0;">${item.q}</div>
+            <div style="font-size:0.85rem; color:#666;">
+                您的選擇：<span class="${isCorrect ? '' : 'wrong'}">${userText}</span><br>
+                正確答案：<span style="color:var(--success); font-weight:bold;">${correctText}</span>
+            </div>
+        `;
+        reviewList.appendChild(div);
+    });
+
+    // 送出至 Google 表單
+    const formID = "1FAIpQLSfu3bs8goWtJg7idtpVoiD5YqaGO-kakrOWFFtQX32ShwEU6Q";
+    const entries = {
+        "entry.736699623": cls,
+        "entry.2075483482": no,
+        "entry.1166655048": name,
+        "entry.2058377406": score
+    };
+    const form = document.createElement('form');
+    form.method = "POST";
+    form.action = `https://docs.google.com/forms/d/e/${formID}/formResponse`;
+    form.target = "hidden_iframe";
+    for(let key in entries) {
+        let input = document.createElement('input');
+        input.type="hidden"; input.name=key; input.value=entries[key];
+        form.appendChild(input);
+    }
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+
+    document.getElementById('quiz-container').style.display = 'none';
+    document.getElementById('result-area').style.display = 'block';
+    document.getElementById('final-score').innerText = score;
+    document.getElementById('time-spent').innerText = `作答耗時：${document.getElementById('timer').innerText.replace('作答時間：','')}`;
+    window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>
