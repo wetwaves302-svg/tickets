@@ -153,7 +153,29 @@ function processResults() {
             </div>
         `;
         reviewList.appendChild(div);
-    });
+   // ... 前方的邏輯不變
+    document.body.appendChild(form);
+    
+    // 確保 iframe 已經存在
+    if (!document.getElementById('hidden_iframe')) {
+        const ifr = document.createElement('iframe');
+        ifr.name = "hidden_iframe";
+        ifr.id = "hidden_iframe";
+        ifr.style.display = "none";
+        document.body.appendChild(ifr);
+    }
+
+    form.submit();
+    
+    // 稍微延遲一點點再移除 form 並切換畫面，增加穩定度
+    setTimeout(() => {
+        document.body.removeChild(form);
+        document.getElementById('quiz-container').style.display = 'none';
+        document.getElementById('result-area').style.display = 'block';
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('time-spent').innerText = `作答耗時：${document.getElementById('timer').innerText.replace('作答時間：','')}`;
+        window.scrollTo(0,0);
+    }, 300); });
 
     // 送出至 Google 表單
     const formID = "1FAIpQLSfu3bs8goWtJg7idtpVoiD5YqaGO-kakrOWFFtQX32ShwEU6Q";
